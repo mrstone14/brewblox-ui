@@ -112,6 +112,7 @@ onErrorCaptured((err: Error) => {
   error.value = err.message;
   const { type, x, y } = props.part;
   notify.error(`${type} (${x},${y}) :${err.message}`);
+  console.trace(err);
   return false;
 });
 </script>

@@ -51,7 +51,9 @@ provide(ContextKey, reactive<WidgetContext>(cloneDeep(props.context)));
 
 provide(InvalidateKey, (reason?: string) => {
   error.value = reason ?? 'Unknown error';
-  invalidateParent(reason);
+  error.value += 'widget: ' + props;
+  console.error(error.value);
+  invalidateParent(error.value);
 });
 
 provide(VolatileKey, props.volatile);
@@ -60,6 +62,7 @@ provide(ChangeWidgetTitleKey, () => startChangeWidgetTitle(props.widget));
 
 onErrorCaptured((err: Error) => {
   error.value = err.message;
+  console.trace(err);
   return false;
 });
 </script>

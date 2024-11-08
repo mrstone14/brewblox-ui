@@ -74,6 +74,7 @@ watch(
 
 onErrorCaptured((err: Error) => {
   error.value = err.message;
+  console.trace(err);
   return false;
 });
 </script>
