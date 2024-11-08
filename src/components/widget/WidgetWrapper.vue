@@ -51,9 +51,8 @@ provide(ContextKey, reactive<WidgetContext>(cloneDeep(props.context)));
 
 provide(InvalidateKey, (reason?: string) => {
   error.value = reason ?? 'Unknown error';
-  error.value += 'widget: ' + props;
   console.error(error.value);
-  invalidateParent(error.value);
+  invalidateParent(reason);
 });
 
 provide(VolatileKey, props.volatile);
