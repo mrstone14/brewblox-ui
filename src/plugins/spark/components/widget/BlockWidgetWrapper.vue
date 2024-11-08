@@ -74,6 +74,7 @@ watch(
 
 onErrorCaptured((err: Error) => {
   error.value = err.message;
+  // eslint-disable-next-line no-console
   console.trace(err);
   return false;
 });

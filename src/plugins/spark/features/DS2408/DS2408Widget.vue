@@ -35,9 +35,10 @@ function setConnectMode(mode: DS2408ConnectMode): void {
   }
   const linked = sparkStore
     .blocksByService(serviceId)
-    .filter((b): b is DigitalActuatorBlock | MotorValveBlock | DigitalInputBlock =>
-      (isCompatible(b.type, BlockIntfType.ActuatorDigitalInterface)
-      || b.type === BlockType.DigitalInput),
+    .filter(
+      (b): b is DigitalActuatorBlock | MotorValveBlock | DigitalInputBlock =>
+        isCompatible(b.type, BlockIntfType.ActuatorDigitalInterface) ||
+        b.type === BlockType.DigitalInput,
     )
     .filter((b) => b.data.hwDevice.id === block.value.id);
 
