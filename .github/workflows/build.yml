@@ -10,7 +10,8 @@ jobs:
   build:
     if: github.repository_owner == 'mrstone14'
     runs-on: ubuntu-22.04
-
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
