@@ -37,9 +37,12 @@ const counterScale = computed<number>(
         v-if="editable || !url"
         class="fit column text-grey justify-center items-center q-gutter-y-md"
       >
-        <q-icon name="mdi-image-frame" size="xl" />
+        <q-icon
+          name="mdi-image-frame"
+          size="xl"
+        />
         <div class="col-auto text-center">
-          {{ url || "No iframe URL set" }}
+          {{ url || 'No iframe URL set' }}
         </div>
       </div>
       <iframe
@@ -57,8 +60,14 @@ const counterScale = computed<number>(
         }"
       />
     </foreignObject>
-    <BuilderInteraction v-if="editable" v-bind="{ width, height }">
-      <q-menu touch-position context-menu>
+    <BuilderInteraction
+      v-if="editable"
+      v-bind="{ width, height }"
+    >
+      <q-menu
+        touch-position
+        context-menu
+      >
         <q-list>
           <SizeMenuContent
             :min="MIN_SIZE"
