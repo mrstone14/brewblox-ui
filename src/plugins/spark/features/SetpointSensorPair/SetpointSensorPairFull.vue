@@ -2,22 +2,38 @@
 import { Block, SetpointSensorPairBlock } from 'brewblox-proto/ts';
 import { computed } from 'vue';
 import { useBlockWidget } from '@/plugins/spark/composables';
-import { ENUM_LABELS_FILTER_CHOICE } from '@/plugins/spark/const';
+import { filterSelectOptions } from '@/plugins/spark/const';
 import { useSparkStore } from '@/plugins/spark/store';
 import { createBlockDialog } from '@/utils/block-dialog';
-import { selectable } from '@/utils/collections';
-
-const filterOpts = selectable(ENUM_LABELS_FILTER_CHOICE);
 
 const sparkStore = useSparkStore();
 const { serviceId, blockId, block, patchBlock, isClaimed } =
   useBlockWidget.setup<SetpointSensorPairBlock>();
+
+const filterOpts = computed(() =>
+  filterSelectOptions(block.value.data.updateInterval?.value ?? null),
+);
 
 const usedBy = computed<Block[]>(() => {
   return sparkStore
     .blocksByService(serviceId)
     .filter((b) => b.data.inputId?.id === blockId);
 });
+
+const rampMessage = `
+    <p>
+      By seting a ramp limit and a ramp duration, you can limit how fast the setpoint
+      can change. With the ramp limit enabled, you can make step changes to the setpoint,
+      but the setpoint will not change faster than the ramp limit.
+    </p>
+    <p>
+      For example, if the ramp limit is set to 1 °C and the ramp duration is set
+      to 1 hour, the setpoint will not change faster than 1 °C per hour.
+    </p>
+    <p>
+      This can be used to avoid shocking the yeast during fermentation.
+    </p>
+    `;
 </script>
 
 <template>
@@ -31,10 +47,18 @@ const usedBy = computed<Block[]>(() => {
         :readonly="isClaimed"
         :class="{ darkened: !block.data.enabled }"
         title="Setting"
-        label="Setting"
+        :label="block.data.rampLimitEnabled ? 'Desired Setting' : 'Setting'"
         tag="big"
         class="col-grow"
         @update:model-value="(v) => patchBlock({ storedSetting: v })"
+      />
+      <QuantityField
+        v-if="block.data.rampLimitEnabled"
+        :model-value="block.data.setting"
+        label="Ramp limited setting"
+        readonly
+        tag="big"
+        class="col-grow"
       />
       <QuantityField
         :model-value="block.data.value"
@@ -58,15 +82,16 @@ const usedBy = computed<Block[]>(() => {
         :options="filterOpts"
         :html="true"
         title="Filter"
-        label="Filter period"
+        label="Filter"
         message="
               <p>
-                A filter averages multiple sensor values to remove noise, spikes and sudden jumps.
-                Changes faster than the filter period will be filtered out.
+                A filter smooths the sensor value to reduce noise, spikes, and sudden jumps.
               </p>
               <p>
-                A longer period will give a smoother output at the cost of a delay in response.
-                This delay is equal to the chosen period.
+                A stronger filter gives a more stable reading,
+                but takes longer to reflect actual temperature changes.
+                The displayed duration is how long it takes for the filtered value
+                to catch up to 95% of a step change.
               </p>
               "
         class="col-grow"
@@ -134,35 +159,42 @@ const usedBy = computed<Block[]>(() => {
 
       <div class="col-break" />
 
+      <ToggleButton
+        :model-value="block.data.rampLimitEnabled"
+        no-caps
+        class="col-5"
+        label="Limit how fast setpoint can ramp"
+        @update:model-value="(v) => patchBlock({ rampLimitEnabled: v })"
+      />
+      <QuantityField
+        :model-value="block.data.rampLimit"
+        title="Ramp limit"
+        label="Ramp limit"
+        class="col-grow"
+        tag="big"
+        html
+        :message="rampMessage"
+        @update:model-value="(v) => patchBlock({ rampLimit: v })"
+      />
+      <span class="col-auto self-center">per</span>
+      <DurationField
+        v-model="block.data.rampDuration"
+        title="Ramp duration"
+        label="Ramp duration"
+        class="col-grow"
+        tag="big"
+        html
+        :message="rampMessage"
+        @update:model-value="(v) => patchBlock({ rampDuration: v })"
+      />
+
+      <div class="col-break" />
+
       <ClaimIndicator
         :block-id="block.id"
         :service-id="serviceId"
         class="col-grow"
       />
     </div>
-
-    <q-card-section v-if="false">
-      <q-separator inset />
-
-      <q-item class="items-start">
-        <q-item-section class="col-4" />
-        <q-item-section v-if="usedBy.length" />
-      </q-item>
-
-      <q-item class="items-end">
-        <q-item-section class="col-4" />
-        <q-item-section class="col-3" />
-        <q-item-section class="col-4" />
-      </q-item>
-
-      <q-item>
-        <q-item-section class="col-4" />
-        <q-item-section class="col-7" />
-      </q-item>
-
-      <q-item>
-        <q-item-section />
-      </q-item>
-    </q-card-section>
   </div>
 </template>

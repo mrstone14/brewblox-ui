@@ -17,6 +17,7 @@ import {
   TransitionDurationPreset,
   ValveState,
 } from 'brewblox-proto/ts';
+import { durationString } from '@/utils/quantity';
 
 type EnumLabels<T extends keyof any> = Record<T, string>;
 
@@ -42,25 +43,54 @@ export const ENUM_LABELS_ANY_CONSTRAINT: EnumLabels<AnyConstraintKey> = {
   ...ENUM_LABELS_ANALOG_CONSTRAINT,
 };
 
-export const ENUM_LABELS_FILTER_CHOICE: EnumLabels<FilterChoice> = {
-  FILTER_NONE: 'No filtering',
-  FILTER_15s: 'Filter 15s',
-  FILTER_45s: 'Filter 45s',
-  FILTER_90s: 'Filter 90s',
-  FILTER_3m: 'Filter 3m',
-  FILTER_10m: 'Filter 10m',
-  FILTER_30m: 'Filter 30m',
+export const FILTER_SAMPLES: Record<FilterChoice, number> = {
+  FILTER_NONE: 0,
+  SETTLE_IN_13_SAMPLES: 13,
+  SETTLE_IN_47_SAMPLES: 47,
+  SETTLE_IN_112_SAMPLES: 112,
+  SETTLE_IN_241_SAMPLES: 241,
+  SETTLE_IN_649_SAMPLES: 649,
+  SETTLE_IN_1876_SAMPLES: 1876,
 };
 
-export const ENUM_LABELS_DERIVATIVE_FILTER_CHOICE: EnumLabels<FilterChoice> = {
-  FILTER_NONE: 'Derived from Td',
-  FILTER_15s: '20s',
-  FILTER_45s: '1m',
-  FILTER_90s: '2.5m',
-  FILTER_3m: '5m',
-  FILTER_10m: '15m',
-  FILTER_30m: '45m',
-};
+export function filterLabel(
+  choice: FilterChoice,
+  updateIntervalMs: number | null = null,
+): string {
+  if (choice === FilterChoice.FILTER_NONE) return 'No filtering';
+  const samples = FILTER_SAMPLES[choice];
+  if (updateIntervalMs != null && updateIntervalMs > 0) {
+    const responseMs = samples * updateIntervalMs;
+    return `${samples} samples (~${durationString(responseMs, false)})`;
+  }
+  return `${samples} samples`;
+}
+
+export function derivativeFilterLabel(
+  choice: FilterChoice,
+  updateIntervalMs: number | null = null,
+): string {
+  if (choice === FilterChoice.FILTER_NONE) return 'Derived from Td';
+  return filterLabel(choice, updateIntervalMs);
+}
+
+export function filterSelectOptions(
+  updateIntervalMs: number | null = null,
+): SelectOption<FilterChoice>[] {
+  return Object.keys(FILTER_SAMPLES).map((key) => ({
+    label: filterLabel(key as FilterChoice, updateIntervalMs),
+    value: key as FilterChoice,
+  }));
+}
+
+export function derivativeFilterSelectOptions(
+  updateIntervalMs: number | null = null,
+): SelectOption<FilterChoice>[] {
+  return Object.keys(FILTER_SAMPLES).map((key) => ({
+    label: derivativeFilterLabel(key as FilterChoice, updateIntervalMs),
+    value: key as FilterChoice,
+  }));
+}
 
 export const ENUM_LABELS_COMBINE_FUNC: EnumLabels<SensorCombiFunc> = {
   SENSOR_COMBI_FUNC_AVG: 'Average',
@@ -162,9 +192,9 @@ export const ENUM_LABELS_STORE_MODE: EnumLabels<SequenceStoreMode> = {
 export const ENUM_LABELS_TEMP_SENSOR_ANALOG_TYPE: EnumLabels<TempSensorAnalogType> =
   {
     TEMP_SENSOR_TYPE_NOT_SET: 'Not set',
-    TEMP_SENSOR_TYPE_RTD_2WIRE: 'RTD (two wire)',
-    TEMP_SENSOR_TYPE_RTD_3WIRE: 'RTD (three wire)',
-    TEMP_SENSOR_TYPE_RTD_4WIRE: 'RTD (four wire)',
+    TEMP_SENSOR_TYPE_RTD_2WIRE: 'RTD (2-wire)',
+    TEMP_SENSOR_TYPE_RTD_3WIRE: 'RTD (3-wire)',
+    TEMP_SENSOR_TYPE_RTD_4WIRE: 'RTD (4-wire)',
   };
 
 export const ENUM_LABELS_TEMP_SENSOR_ANALOG_SPEC: EnumLabels<TempSensorAnalogSpec> =
@@ -183,4 +213,6 @@ export const ENUM_LABELS_ANALOG_SENSOR_TYPE: EnumLabels<AnalogSensorType> = {
   ANALOG_SENSOR_TYPE_RTD_3WIRE: 'RTD (3-wire)',
   ANALOG_SENSOR_TYPE_RTD_4WIRE: 'RTD (4-wire)',
   ANALOG_SENSOR_TYPE_RTD_3WIRE_LS: 'RTD (3-wire low side)',
+  ANALOG_SENSOR_TYPE_STRAIN_GAUGE_LOW_RESISTANCE:
+    'Strain gauge (low resistance)',
 };
