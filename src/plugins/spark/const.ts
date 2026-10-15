@@ -1,4 +1,5 @@
 import {
+  AnalogCalibrationState,
   AnalogCompareOp,
   AnalogConstraintKey,
   AnalogSensorType,
@@ -10,8 +11,10 @@ import {
   FilterChoice,
   LogicResult,
   PwmFrequency,
+  ResetReason,
   SensorCombiFunc,
   SequenceStoreMode,
+  SparkPlatform,
   TempSensorAnalogSpec,
   TempSensorAnalogType,
   TransitionDurationPreset,
@@ -101,6 +104,41 @@ export const ENUM_LABELS_COMBINE_FUNC: EnumLabels<SensorCombiFunc> = {
 export const ENUM_LABELS_DISPLAY_TEMP: EnumLabels<DisplayTempUnit> = {
   TEMP_CELSIUS: 'Celsius',
   TEMP_FAHRENHEIT: 'Fahrenheit',
+};
+
+export const ENUM_LABELS_SPARK_PLATFORM: EnumLabels<SparkPlatform> = {
+  PLATFORM_UNKNOWN: 'Unknown',
+  PLATFORM_GCC: 'Simulator (legacy)',
+  PLATFORM_PHOTON: 'Spark 2 (Photon)',
+  PLATFORM_P1: 'Spark 3 (P1)',
+  PLATFORM_ESP: 'Spark 4 (ESP32)',
+  PLATFORM_SIM: 'Simulator',
+};
+
+export const ENUM_LABELS_RESET_REASON: EnumLabels<ResetReason> = {
+  RESET_REASON_UNKNOWN: 'Unknown',
+  RESET_REASON_POWER_ON: 'Power on',
+  RESET_REASON_EXTERNAL: 'External reset',
+  RESET_REASON_SOFTWARE: 'Software reset',
+  RESET_REASON_PANIC: 'Panic (crash)',
+  RESET_REASON_INTERRUPT_WDT: 'Interrupt watchdog',
+  RESET_REASON_TASK_WDT: 'Task watchdog',
+  RESET_REASON_OTHER_WDT: 'Watchdog',
+  RESET_REASON_DEEP_SLEEP: 'Wake from deep sleep',
+  RESET_REASON_BROWNOUT: 'Brownout (low voltage)',
+  RESET_REASON_SDIO: 'SDIO reset',
+  RESET_REASON_USB: 'USB reset',
+  RESET_REASON_JTAG: 'JTAG reset',
+  RESET_REASON_EFUSE: 'eFuse error',
+  RESET_REASON_POWER_GLITCH: 'Power glitch',
+  RESET_REASON_CPU_LOCKUP: 'CPU lockup',
+  RESET_REASON_FIRMWARE_UPDATE: 'Firmware update',
+  RESET_REASON_FIRMWARE_UPDATE_FAILED: 'Firmware update failed',
+  RESET_REASON_FIRMWARE_UPDATE_TIMEOUT: 'Firmware update timed out',
+  RESET_REASON_FACTORY_RESET: 'Factory reset',
+  RESET_REASON_SAFE_MODE: 'Safe mode',
+  RESET_REASON_DFU_MODE: 'DFU mode',
+  RESET_REASON_USER_REQUESTED: 'Requested by user',
 };
 
 export const ENUM_LABELS_DIGITAL_STATE: EnumLabels<DigitalState> = {
@@ -216,3 +254,11 @@ export const ENUM_LABELS_ANALOG_SENSOR_TYPE: EnumLabels<AnalogSensorType> = {
   ANALOG_SENSOR_TYPE_STRAIN_GAUGE_LOW_RESISTANCE:
     'Strain gauge (low resistance)',
 };
+
+export const ENUM_LABELS_ANALOG_CALIBRATION_STATE: EnumLabels<AnalogCalibrationState> =
+  {
+    ANALOG_CALIBRATION_STATE_NONE: 'Not calibrated',
+    ANALOG_CALIBRATION_STATE_RUNNING: 'Calibrating',
+    ANALOG_CALIBRATION_STATE_DONE: 'Calibrated',
+    ANALOG_CALIBRATION_STATE_FAILED: 'Calibration failed',
+  };

@@ -26,8 +26,10 @@ import { colors } from 'quasar';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useContext } from '@/composables';
 import { useBlockWidget } from '@/plugins/spark/composables';
+import { useSparkStore } from '@/plugins/spark/store';
 import { selectable } from '@/utils/collections';
 import { createDialog } from '@/utils/dialog';
+import { notify } from '@/utils/notify';
 import { bloxQty, durationMs, durationString } from '@/utils/quantity';
 import { ENUM_LABELS_STORE_MODE } from '../../const';
 import SequenceDocumentation from './SequenceDocumentation.vue';
@@ -38,7 +40,7 @@ const ERROR_TEXT: Record<SequenceError, string | null> = {
   [SequenceError.INVALID_TARGET]: 'Target block is invalid or missing',
   [SequenceError.DISABLED_TARGET]: 'Target block is disabled',
   [SequenceError.INACTIVE_TARGET]:
-    'Target block is inactive or claimed by disabled block',
+    'Target block is inactive, has no value, or is in error',
   [SequenceError.SYSTEM_TIME_NOT_AVAILABLE]:
     'System time not set on controller',
   [SequenceError.VARIABLES_NOT_SUPPORTED]:
@@ -60,6 +62,7 @@ const activeInstructionAttributes = Decoration.line({
 });
 
 const { context, inDialog } = useContext.setup();
+const sparkStore = useSparkStore();
 const { serviceId, block, patchBlock } = useBlockWidget.setup<SequenceBlock>();
 const editor = ref<HTMLDivElement>();
 const configError = ref<string | undefined>();
@@ -129,6 +132,9 @@ const runtimeError = computed<string | null>(() => {
     return msg;
   }
   const [opcode] = instruction.split(' ', 1);
+  if (opcode === 'WAIT_DURATION' && error === SequenceError.INVALID_ARGUMENT) {
+    return `${opcode}: Duration is too long, a wait is at most 49 days`;
+  }
   return `${opcode}: ${msg}`;
 });
 
@@ -260,13 +266,21 @@ function revertLocal(): void {
 
 async function saveLocal(): Promise<void> {
   try {
-    await patchBlock({
-      instructions: localInstructionsText.value
-        .trim()
-        .split('\n')
-        .filter((s) => !!s.trim()),
+    const wasEnabled = block.value.data.enabled;
+    // Every line is an instruction: the service stores a blank line as a COMMENT without text,
+    // so line numbers and the active instruction stay in step with the editor
+    const text = localInstructionsText.value;
+    const patched = await sparkStore.patchBlock(block.value, {
+      instructions: text === '' ? [] : text.split('\n'),
     });
     configError.value = undefined;
+    // The controller stops the sequence if the edit removed the active instruction
+    if (wasEnabled && patched?.data.enabled === false) {
+      notify.warn(
+        'The active instruction was removed. ' +
+          'The sequence was reset to the first instruction and disabled.',
+      );
+    }
   } catch (e) {
     configError.value = (e as any).response?.data?.error;
   }
@@ -455,6 +469,11 @@ function skipTo(idx: number): void {
           When the Spark starts it restores all blocks settings.
           This includes sequence position and enabled/disabled state.<br/>
           You can choose to reset the sequence to a specific state.
+          </p>
+
+          <p>
+          The position is stored once an instruction has run for a minute.
+          A WAIT_DURATION that was running starts over.
           </p>
 
           <p>

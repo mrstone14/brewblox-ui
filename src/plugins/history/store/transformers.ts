@@ -1,5 +1,7 @@
 import forEach from 'lodash/forEach';
 import last from 'lodash/last';
+import sortedIndex from 'lodash/sortedIndex';
+import sortedLastIndex from 'lodash/sortedLastIndex';
 import parseDuration from 'parse-duration';
 import {
   DEFAULT_GRAPH_DECIMALS,
@@ -47,67 +49,160 @@ function fieldLabel(
   return `<span ${prop}>${label}<br>${fixedNumber(value, precision)}</span>`;
 }
 
+/**
+ * The trace uid of a field: its name as hex.
+ * Plotly builds CSS selectors and element ids from uids,
+ * and a field name can hold any character.
+ *
+ * @param key
+ * @returns
+ */
+export function traceUid(key: string): string {
+  return Array.from(new TextEncoder().encode(key), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+export interface GraphPoints {
+  x: number[];
+  y: number[];
+}
+
+/**
+ * The legend name of a field: its label, and its value at the right edge of the window
+ * shown (`end`, epoch ms), or its newest value when the graph shows all data.
+ *
+ * @param source
+ * @param key
+ * @param points
+ * @param end
+ * @returns
+ */
+export function legendName(
+  source: GraphSource,
+  key: string,
+  { x, y }: GraphPoints,
+  end: number | null,
+): string {
+  const idx = end == null ? y.length - 1 : sortedLastIndex(x, end) - 1;
+  return fieldLabel(source, key, idx >= 0 ? y[idx] : undefined);
+}
+
+/**
+ * The points of a field with a refined stretch: the refined points,
+ * and the live points before and after them.
+ * Without refined points, or with fewer than the live points they cover,
+ * these are the live points.
+ *
+ * @param live
+ * @param refined
+ * @returns
+ */
+export function mergeRefined(
+  live: Maybe<GraphPoints>,
+  refined: Maybe<GraphPoints>,
+): GraphPoints {
+  const x = live?.x ?? [];
+  const y = live?.y ?? [];
+  if (refined == null || refined.x.length === 0) {
+    return { x, y };
+  }
+  const before = sortedIndex(x, refined.x[0]);
+  const after = sortedLastIndex(x, refined.x[refined.x.length - 1]);
+  // A refined window can have a coarser step than the live points it covers,
+  // such as follow-ups at 10 s under 60 s averages: keep the finer ones
+  if (after - before > refined.x.length) {
+    return { x, y };
+  }
+  return {
+    x: [...x.slice(0, before), ...refined.x, ...x.slice(after)],
+    y: [...y.slice(0, before), ...refined.y, ...y.slice(after)],
+  };
+}
+
+/**
+ * Applies a message of a `ranges` stream to the graph source.
+ *
+ * An initial message replaces everything the source holds, also when it has no ranges.
+ * History sends one at the start of every stream: it leaves out the fields without points
+ * in the window, and has no ranges when none has points.
+ * It sends another after its clock went back, which lists every field.
+ * Follow-up messages hold only the new points of the fields that have them, and are appended.
+ *
+ * @param source
+ * @param result
+ */
 export function graphSourceTransformer(
   source: GraphSource,
   result: TimeSeriesRangesResult,
 ): void {
-  if (result.ranges.length > 0) {
-    if (result.initial) {
-      source.values = {};
-    }
-
-    result.ranges.forEach((range) => {
-      const key = range.metric.__name__;
-      const existing = source.values[key];
-      const min = source.min?.[key];
-      const max = source.max?.[key];
-
-      const x: number[] = boundedConcat(
-        existing?.x,
-        range.values.map((v) => v[0] * 1000),
-      );
-      const y: number[] = boundedConcat(
-        existing?.y,
-        range.values.map((v) => {
-          const value = Number(v[1]);
-          if (min != null && value < min) {
-            return NaN;
-          }
-          if (max != null && value > max) {
-            return NaN;
-          }
-          return Number(v[1]);
-        }),
-      );
-      source.values[key] = {
-        ...existing, // Plotly can set values
-        x,
-        y,
-        type: 'scattergl',
-        mode: 'lines',
-        name: fieldLabel(source, key, last(y)),
-        yaxis: source.axes[key] ?? 'y',
-        line: { color: source.colors[key] },
-      };
-    });
-
-    if (source.params.duration && !source.params.start && !source.params.end) {
-      // timestamp in Ms that should be discarded
-      const boundary =
-        new Date().getTime() - (parseDuration(source.params.duration) ?? 0);
-      forEach(source.values, (val) => {
-        const boundaryIdx = val.x.findIndex((x: number) => x > boundary);
-        if (boundaryIdx > 0) {
-          val.x = val.x.slice(boundaryIdx);
-          val.y = val.y.slice(boundaryIdx);
-        }
-      });
-    }
-
-    source.truncated = Object.values(source.values).some(
-      (vals) => vals.x.length === MAX_GRAPH_POINTS,
-    );
+  if (result.initial) {
+    source.values = {};
   }
+
+  result.ranges.forEach((range) => {
+    const key = range.metric.__name__;
+    const existing = source.values[key];
+    const min = source.min?.[key];
+    const max = source.max?.[key];
+
+    const x: number[] = boundedConcat(
+      existing?.x,
+      range.values.map((v) => v[0] * 1000),
+    );
+    const y: number[] = boundedConcat(
+      existing?.y,
+      range.values.map((v) => {
+        const value = Number(v[1]);
+        if (min != null && value < min) {
+          return NaN;
+        }
+        if (max != null && value > max) {
+          return NaN;
+        }
+        return Number(v[1]);
+      }),
+    );
+    source.values[key] = {
+      ...existing, // Plotly can set values
+      uid: traceUid(key),
+      x,
+      y,
+      type: 'scattergl',
+      mode: 'lines',
+      name: fieldLabel(source, key, last(y)),
+      yaxis: source.axes[key] ?? 'y',
+      line: { color: source.colors[key] },
+    };
+  });
+
+  if (source.params.duration && !source.params.start && !source.params.end) {
+    // The window ends at the newest point, not at the browser's now:
+    // the points carry the time of the history host, whose clock can differ.
+    // Timestamp in Ms that should be discarded
+    const newest = Math.max(
+      ...Object.values(source.values).map((val) => last(val.x) ?? -Infinity),
+    );
+    const boundary = newest - (parseDuration(source.params.duration) ?? 0);
+    forEach(source.values, (val, key) => {
+      const boundaryIdx = val.x.findIndex((x: number) => x > boundary);
+      if (boundaryIdx > 0) {
+        val.x = val.x.slice(boundaryIdx);
+        val.y = val.y.slice(boundaryIdx);
+      }
+      // A field that stopped getting points (a deleted block, a removed service)
+      // would otherwise keep its line, and stretch the x axis back to it
+      if (boundaryIdx === -1 && val.x.length > 0) {
+        val.x = [];
+        val.y = [];
+        val.name = fieldLabel(source, key, undefined);
+      }
+    });
+  }
+
+  source.truncated = Object.values(source.values).some(
+    (vals) => vals.x.length === MAX_GRAPH_POINTS,
+  );
 }
 
 export function metricsSourceTransformer(

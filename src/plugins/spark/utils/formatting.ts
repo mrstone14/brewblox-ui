@@ -112,6 +112,16 @@ export function prettyConstraints(
   return output.join(', ');
 }
 
+/**
+ * Why a block's setting can not be changed by hand,
+ * or null if nothing claims the block.
+ * A disabled block releases what it claimed.
+ */
+export function claimReason(block: Maybe<Block>): string | null {
+  const id = block?.data.claimedBy?.id;
+  return id ? `Controlled by ${id}. Disable ${id} to set it by hand.` : null;
+}
+
 export function prettyLimitations(
   constraints: Maybe<AnalogConstraints | DigitalConstraints>,
 ): string {

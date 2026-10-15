@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per week for everything that stays within its major
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+      # One PR for all security fixes, whatever their kind of update
+      security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+    ignore:
+      # Pinned to the firmware release by `yarn firmware`
+      - dependency-name: brewblox-proto
+      # Majors are taken by hand, one at a time, with a manual pass in the UI
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

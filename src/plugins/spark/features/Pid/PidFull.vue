@@ -17,7 +17,6 @@ import {
 } from '@/plugins/spark/const';
 import { useSparkStore } from '@/plugins/spark/store';
 import { prettyBlock } from '@/plugins/spark/utils/formatting';
-import { isBlockClaimed } from '@/plugins/spark/utils/info';
 import { createBlockDialog } from '@/utils/block-dialog';
 import { createDialog } from '@/utils/dialog';
 import { matchesType } from '@/utils/objects';
@@ -51,8 +50,8 @@ const ambientBlock = computed<Block | null>(() =>
   sparkStore.blockByLink(serviceId, block.value.data.ambientId),
 );
 
-const inputClaimed = computed<boolean>(() =>
-  isBlockClaimed(inputBlock.value, sparkStore.claims),
+const inputClaimed = computed<boolean>(
+  () => inputBlock.value?.data.claimedBy?.id != null,
 );
 
 const inputStoredSetting = computed<Quantity | null>({
@@ -116,6 +115,13 @@ const ambientRaw = computed<Quantity>(() =>
   tempQty(ambientBlock.value?.data.value ?? null),
 );
 
+// P, I and D are null while the PID input is invalid.
+// FF is null without a valid ambient value, and then adds nothing.
+const outputSum = computed<number | null>(() => {
+  const { p, i, d, ff } = block.value.data;
+  return p != null && i != null && d != null ? p + i + d + (ff ?? 0) : null;
+});
+
 function showInput(): void {
   createBlockDialog(inputBlock.value);
 }
@@ -130,10 +136,11 @@ function showAmbient(): void {
 
 const ambientHint = computed<string>(() => {
   const offset = bloxQty(block.value.data.ambientOffset);
-  if (!offset.value) {
+  const { i, ff } = block.value.data;
+  if (!offset.value || i == null || ff == null) {
     return '';
   }
-  const sum = block.value.data.i + block.value.data.ff;
+  const sum = i + ff;
   const suggestedKff = sum / offset.value;
   return `<i>Hint: FF is now ${roundedNumber(block.value.data.ff, 2)} and
    I is ${roundedNumber(block.value.data.i, 2)}.<br>
@@ -485,6 +492,10 @@ function openDerivativeFilterDialog(): void {
                        which makes I the main driver of the output instead of P. </li>
                   </ul>
                 </p>
+                <p>
+                  While the output is missing or disabled, I does not build up,
+                  and slowly returns to zero.
+                </p>
                 <p>Setting Ti to zero will disable the integrator.</p>
                 "
             borderless
@@ -552,7 +563,8 @@ function openDerivativeFilterDialog(): void {
               </p>
               <p>
                 When there is little overshoot in the system, Td is best kept at zero.
-                D is clipped to +/- P to avoid oscillations.
+                D is limited to the largest P of roughly the last 1.5 Td,
+                to avoid oscillations.
               </p>
               "
             borderless
@@ -655,11 +667,7 @@ function openDerivativeFilterDialog(): void {
         <div class="span-s text-center big q-mt-md">=</div>
         <div class="span-m row items-center full-height summed">
           <div class="big text-right q-pr-sm q-mt-md full-width">
-            {{
-              fixedNumber(
-                block.data.p + block.data.i + block.data.d + block.data.ff,
-              )
-            }}
+            {{ fixedNumber(outputSum) }}
           </div>
         </div>
       </div>

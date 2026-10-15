@@ -47,12 +47,14 @@ const values = reactive<WiFiSettingsBlock['data']>({
   password: '',
   security: WifiSecurityType.WLAN_SEC_WPA2,
   cipher: WifiCipherType.WLAN_CIPHER_NOT_SET,
-  signal: 0,
 });
 
-const block = computed<WiFiSettingsBlock>(
-  () => getWiFiSettingsBlock(props.serviceId)!,
+const block = computed<WiFiSettingsBlock>(() =>
+  getWiFiSettingsBlock(props.serviceId)!,
 );
+
+// The controller reports the network it joined, and nothing while not connected
+values.ssid = block.value?.data.ssid ?? '';
 
 async function save(): Promise<void> {
   busy.value = true;

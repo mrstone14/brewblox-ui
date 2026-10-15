@@ -2,7 +2,7 @@ import { AxiosResponse } from 'axios';
 import { SESSION_NAMESPACE, WS_HOST } from '@/const';
 import { createApi } from '@/database/api';
 import { http } from '@/utils/http';
-import { CsvQuery, LoggedSession } from '../types';
+import { CsvQuery, LoggedSession, MigrationStatus } from '../types';
 
 export const historyApi = {
   openStream: (): WebSocket =>
@@ -10,10 +10,17 @@ export const historyApi = {
 
   fetchFields: async (duration: string): Promise<string[]> =>
     http
-      .post<
-        { duration: string },
-        AxiosResponse<string[]>
-      >('/history/timeseries/fields', { duration })
+      .post<{ duration: string }, AxiosResponse<string[]>>(
+        '/history/timeseries/fields',
+        { duration },
+      )
+      .then((resp) => resp.data),
+
+  fetchMigrationStatus: async (): Promise<MigrationStatus | null> =>
+    http
+      .get<MigrationStatus | null>('/history/timeseries/migrate', {
+        timeout: 5000,
+      })
       .then((resp) => resp.data),
 
   downloadCsv: async (query: CsvQuery): Promise<Blob> =>

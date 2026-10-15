@@ -20,7 +20,7 @@ const service = computed<Service | null>(() =>
 
 const pageComponent = computed<string | null>(() =>
   service.value !== null
-    ? featureStore.serviceById(service.value.type)?.pageComponent ?? null
+    ? (featureStore.serviceById(service.value.type)?.pageComponent ?? null)
     : null,
 );
 </script>
@@ -29,6 +29,7 @@ const pageComponent = computed<string | null>(() =>
   <component
     :is="pageComponent"
     v-if="pageComponent !== null"
+    :key="serviceId"
     :service-id="serviceId"
   />
   <q-page

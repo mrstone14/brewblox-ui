@@ -11,6 +11,13 @@
 
 Due to limitations in the way Docker is handled on Windows, Linux or Mac is required for development.
 
+## Supported browsers
+
+Chrome and Edge 87+, Firefox 78+ and Safari 14+ (iOS 14+), as set in `vite.config.mts` and `browserslist` in `package.json`.
+The build compiles newer syntax down for these browsers, and adds polyfills for the newer functions that the app and its libraries use.
+Older browsers show a message asking to update.
+Below Chrome 111, Safari 16.2 and Firefox 113, shadows are not drawn.
+
 ## Installation
 
 **This will install the development version of brewblox-ui. The user install guide for Brewblox can be found at <https://brewblox.com/>**
@@ -39,12 +46,17 @@ sudo usermod -aG docker $USER
 reboot
 ```
 
-After the reboot, run the following commands in the `brewblox-ui` directory:
+After the reboot, clone the repository including the `brewblox-proto` submodule,
+and run the following commands in the `brewblox-ui` directory:
 
 ``` bash
+git clone --recurse-submodules https://github.com/BrewBlox/brewblox-ui.git
+cd brewblox-ui
 yarn install
 docker compose pull
 ```
+
+If you cloned without `--recurse-submodules`, run `git submodule update --init` first.
 
 ## Run
 
@@ -54,14 +66,21 @@ yarn start
 
 The UI will be served with hot reloading at <https://localhost:8080/ui>
 
+The backend services are proxied by Traefik at <https://localhost:9001>.
+The eventbus is also reachable over plain MQTT at `localhost:9883`,
+and over MQTTS at `localhost:9884`.
+
 ## Additional dev commands
 
 ```bash
 # Restart backend containers
 yarn compose:new
 
+# Serve the UI without restarting backend containers
+yarn serve
+
 # Reset widgets
-yarn datastore:load
+yarn redis:load
 
 # Reset Spark blocks
 yarn spark:load
@@ -72,7 +91,8 @@ yarn build
 # Generate import types for global components
 yarn components
 
-# Pull shared types for a specific firmware build
+# Pull firmware.ini for a firmware build, and check out the matching
+# commit of the brewblox-proto submodule (shared types).
 # Develop is used by default, but a branch name argument can be used
 yarn firmware
 ```

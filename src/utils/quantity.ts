@@ -157,14 +157,18 @@ export function roundedNumber(value: Maybe<number>, digits = 2): number | null {
 
 /**
  * Rounds number to given digits, and converts it to string.
- * Returns placeholder string '--.--' / '---' if input is not a number.
+ * If input is not a number, returns a placeholder with as many decimals:
+ * '--.-' for 1 digit, '--.--' for 2, and '---' for none.
  *
  * @param value
  * @param digits
  * @returns
  */
 export function fixedNumber(value: Maybe<number>, digits = 2): string {
-  return isNumber(value) ? value.toFixed(digits) : digits > 0 ? '--.--' : '---';
+  if (isNumber(value)) {
+    return value.toFixed(digits);
+  }
+  return digits > 0 ? `--.${'-'.repeat(digits)}` : '---';
 }
 
 /**
@@ -411,7 +415,7 @@ export function bloxQty(value: QuantityCompatible, unit?: string): JSQuantity {
 export function durationMs(duration: Maybe<DurationCompatible>): number {
   if (isQuantity(duration)) {
     return isDurationUnit(duration.unit)
-      ? bloxQty(duration).to('ms').value ?? 0
+      ? (bloxQty(duration).to('ms').value ?? 0)
       : 0;
   } else if (isFinite(duration)) {
     return Number(duration);

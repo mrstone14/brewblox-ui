@@ -1,6 +1,5 @@
 import {
   Block,
-  BlockClaim,
   BlockIntfType,
   BlockType,
   COMPATIBLE_TYPES,
@@ -69,6 +68,18 @@ export function isDiscoveredBlockType(type: Maybe<string>): type is BlockType {
   ]);
 }
 
+/**
+ * Placeholder types emitted by the Spark service when it fails to decode a block.
+ * `ErrorObject` is used when decoding raised an error,
+ * and `UnknownType` when the service has no codec entry for the block type.
+ * Neither is part of `BlockType`, and neither has a BlockSpec.
+ */
+export const ERROR_BLOCK_TYPES = ['ErrorObject', 'UnknownType'];
+
+export function isErrorBlockType(type: Maybe<string>): boolean {
+  return type != null && ERROR_BLOCK_TYPES.includes(type);
+}
+
 export function isBlockDisplayReady(addr: BlockAddress): boolean {
   return isCompatible(addr?.type, [
     BlockIntfType.TempSensorInterface,
@@ -96,13 +107,6 @@ export function isBlockDisplayed(
     )
   );
 }
-
-export const isBlockClaimed = (
-  block: Maybe<Block>,
-  claims: Mapped<BlockClaim[]>,
-): boolean =>
-  block != null &&
-  !!claims[block.serviceId]?.some((claim) => claim.target === block.id);
 
 export const isSparkState = (data: unknown): data is SparkStateEvent =>
   (data as SparkStateEvent).type === 'Spark.state';
